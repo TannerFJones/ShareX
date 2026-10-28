@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -108,6 +108,7 @@ public interface IAnnotationToolbarAdapter : INotifyPropertyChanged
     ReadOnlyObservableCollection<string> RecentImageFiles { get; }
     bool HasRecentImageFiles { get; }
     bool IsEffectsButtonActive { get; }
+    ICommand ResetNumberCounterCommand { get; }
     ICommand NewImageCommand { get; }
     ICommand OpenImageCommand { get; }
     ICommand SaveCommand { get; }

@@ -299,6 +299,12 @@
                                                    IsVisible="{Binding ShowStepStartNumber}"
                                                    ToolTip.Tip="Starting number"/>
 
+                    <Button Content="New sequence"
+                            Height="40"
+                            IsVisible="{Binding ShowStepStartNumber}"
+                            Command="{Binding ResetNumberCounterCommand}"
+                            ToolTip.Tip="Start a separate count at the starting number. Existing markers keep their numbers."/>
+
                     <controls:StrengthSlider x:Name="EffectStrengthSlider"
                                              Maximum="{Binding EffectStrengthMaximum}"
                                              SelectedStrength="{Binding EffectStrength, Mode=TwoWay}"

@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -40,7 +40,7 @@ using SkiaSharp;
 
 namespace ShareX.ImageEditor.Presentation.Controllers;
 
-public class EditorSelectionController
+public partial class EditorSelectionController
 {
     private static readonly Cursor SelectToolCursor = new(StandardCursorType.Arrow);
     private const string SegmentStartHandleTag = "SegmentStart";
@@ -77,7 +77,7 @@ public class EditorSelectionController
     private bool _hasLastPointerCanvasPoint;
     private KeyModifiers _currentKeyModifiers;
 
-    public Control? SelectedShape => _selectedShape;
+    public Control? SelectedShape => _propertyEditTarget ?? _selectedShape;
     public bool IsInteractionActive => IsSelectionInteractionActive();
 
     // Event invoked when visual needs update (for Effects)
@@ -94,6 +94,8 @@ public class EditorSelectionController
     public void ClearSelection()
     {
         var wasSelected = _selectedShape != null;
+        _selectedShapes.Clear();
+        ClearMarquee();
         _selectedShape = null;
         _isDraggingHandle = false;
         _draggedHandle = null;
@@ -116,6 +118,8 @@ public class EditorSelectionController
     public void SetSelectedShape(Control shape)
     {
         var wasNull = _selectedShape == null;
+        _selectedShapes.Clear();
+        _selectedShapes.Add(shape);
         _selectedShape = shape;
         UpdateBoundsObserver();
 
@@ -186,8 +190,13 @@ public class EditorSelectionController
             }
         }
 
+        if (_view.DataContext is MainViewModel selectionVm && selectionVm.ActiveTool == EditorTool.Select)
+        {
+            return BeginSelection(canvas, point, e);
+        }
+
         // Check if clicked on an existing shape (Select or Drag)
-        // If we are in Select tool OR user holds Ctrl (multi-select not impl yet) or just clicking existing shapes to move
+        // The Select tool handles multiple selection above; drawing tools retain their per-shape behavior.
         // BUT: If active tool is a drawing tool, we usually prioritize drawing NEW shapes unless we click ON a selected shape?
         // ShareX logic: If in Select Tool, selecting works. If in other tools, usually drawing takes precedence unless we click a handle.
         // But logic in EditorView.axaml.cs had:
@@ -235,6 +244,8 @@ public class EditorSelectionController
                         return true;
                     }
 
+                    _selectedShapes.Clear();
+                    _selectedShapes.Add(hitTarget);
                     _selectedShape = hitTarget;
                     UpdateBoundsObserver();
                     _isDraggingShape = true;
@@ -289,6 +300,8 @@ public class EditorSelectionController
                         return true;
                     }
 
+                    _selectedShapes.Clear();
+                    _selectedShapes.Add(hitTarget);
                     _selectedShape = hitTarget;
                     UpdateBoundsObserver();
                     _isDraggingShape = true;
@@ -309,6 +322,8 @@ public class EditorSelectionController
                             return true;
                         }
 
+                        _selectedShapes.Clear();
+                        _selectedShapes.Add(manualHit);
                         _selectedShape = manualHit;
                         UpdateBoundsObserver();
                         _isDraggingShape = true;
@@ -404,6 +419,13 @@ public class EditorSelectionController
         _lastPointerCanvasPoint = currentPoint;
         _hasLastPointerCanvasPoint = true;
 
+        if (_isMarqueeSelecting)
+        {
+            UpdateMarquee(currentPoint);
+            e.Handled = true;
+            return true;
+        }
+
         if (_isDraggingHandle && _draggedHandle != null && _selectedShape != null)
         {
             UpdateCanvasCursorForSelectionInteraction();
@@ -473,6 +495,16 @@ public class EditorSelectionController
     {
         _currentKeyModifiers = e.KeyModifiers;
 
+        if (_isMarqueeSelecting)
+        {
+            ClearMarquee();
+            e.Pointer.Capture(null);
+            UpdateSelectionHandles();
+            e.Handled = true;
+            return true;
+        }
+
+        FinishMoveHistory();
         if (_isDraggingHandle)
         {
             FinalizeEmojiInteractiveRender();
@@ -930,6 +962,7 @@ public class EditorSelectionController
 
         _lastDragPoint = new Point(0, 0);
         HandleMove(new Point(deltaX, deltaY));
+        FinishMoveHistory();
 
         if (_selectedShape?.Tag is BaseEffectAnnotation)
         {
@@ -946,6 +979,12 @@ public class EditorSelectionController
 
         var deltaX = currentPoint.X - _lastDragPoint.X;
         var deltaY = currentPoint.Y - _lastDragPoint.Y;
+        if (!_movingMultiple && (Math.Abs(deltaX) > 0.001 || Math.Abs(deltaY) > 0.001) && !_moveHistoryCaptured)
+        {
+            _view.EditorCore.BeginAnnotationEdit();
+            _moveHistoryCaptured = true;
+        }
+        if (MoveMultiple(currentPoint)) return;
 
         if (_selectedShape is global::Avalonia.Controls.Shapes.Path segmentPath
             && segmentPath.Tag is Annotation segmentAnnotation
@@ -1075,6 +1114,11 @@ public class EditorSelectionController
         _selectionHandles.Clear();
 
         if (_selectedShape == null) return;
+        if (_selectedShapes.Count > 1)
+        {
+            DrawMultipleSelection(overlay);
+            return;
+        }
 
         if (ShouldSuppressSelectionHandles()) return;
 
@@ -1453,7 +1497,7 @@ public class EditorSelectionController
 
     private bool IsSelectionInteractionActive()
     {
-        return _isDraggingHandle || _isDraggingShape;
+        return _isDraggingHandle || _isDraggingShape || _isMarqueeSelecting;
     }
 
     private Cursor GetSelectionHandleCursor()

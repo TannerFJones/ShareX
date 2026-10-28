@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -316,7 +316,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
                 return;
             }
 
-            NumberCounter = clamped;
+            ResetNumberCounter();
         }
 
         partial void OnSelectedStepTypeChanged(StepType value)
@@ -809,14 +809,20 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             }
         }
 
+        private IReadOnlyList<Annotation> _selectedAnnotations = Array.Empty<Annotation>();
+        public void SetSelectedAnnotations(IEnumerable<Annotation> annotations)
+        {
+            _selectedAnnotations = annotations.ToArray();
+            UpdateToolOptionsVisibility();
+        }
+        private bool SelectionSupports(params EditorTool[] tools) =>
+            _selectedAnnotations.Any(a => tools.Contains(a.ToolType))
+            || (_selectedAnnotations.Count == 0 && SelectedAnnotation != null && tools.Contains(SelectedAnnotation.ToolType));
+
         // Visibility computed properties based on ActiveTool
         public bool ShowBorderColor => ActiveTool switch
         {
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow or EditorTool.Freehand or EditorTool.SpeechBalloon or EditorTool.Text or EditorTool.Step => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Rectangle, EditorTool.Ellipse, EditorTool.Line, EditorTool.Arrow, EditorTool.Freehand, EditorTool.SpeechBalloon, EditorTool.Text, EditorTool.Step),
             EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow or EditorTool.Freehand or EditorTool.SpeechBalloon or EditorTool.Text or EditorTool.Step => true,
             _ => false
         };
@@ -824,22 +830,14 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         public bool ShowFillColor => ActiveTool switch
         {
             EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.SpeechBalloon or EditorTool.Step or EditorTool.Highlight => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.SpeechBalloon or EditorTool.Step or EditorTool.Highlight => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Rectangle, EditorTool.Ellipse, EditorTool.SpeechBalloon, EditorTool.Step, EditorTool.Highlight),
             _ => false
         };
 
         public bool ShowTextColor => ActiveTool switch
         {
             EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-            EditorTool.Select => SelectedAnnotation?.ToolType switch
-            {
-                EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.SpeechBalloon, EditorTool.Step),
             _ => false
         };
 
@@ -847,23 +845,14 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         {
             EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow
                 or EditorTool.Freehand or EditorTool.SpeechBalloon or EditorTool.Step or EditorTool.Text => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow
-                    or EditorTool.Freehand or EditorTool.SpeechBalloon or EditorTool.Step or EditorTool.Text => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Rectangle, EditorTool.Ellipse, EditorTool.Line, EditorTool.Arrow, EditorTool.Freehand, EditorTool.SpeechBalloon, EditorTool.Step, EditorTool.Text),
             _ => false
         };
 
         public bool ShowFontSize => ActiveTool switch
         {
             EditorTool.Text or EditorTool.Step or EditorTool.SpeechBalloon => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Text or EditorTool.Step or EditorTool.SpeechBalloon => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.Step, EditorTool.SpeechBalloon),
             _ => false
         };
 
@@ -874,47 +863,35 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         public bool ShowTextHorizontalAlignment => ActiveTool switch
         {
             EditorTool.Text or EditorTool.SpeechBalloon => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Text or EditorTool.SpeechBalloon => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.SpeechBalloon),
             _ => false
         };
 
         public bool ShowFontFamily => ActiveTool switch
         {
             EditorTool.Text or EditorTool.SpeechBalloon => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Text or EditorTool.SpeechBalloon => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.SpeechBalloon),
             _ => false
         };
 
         public bool ShowBorderStyle => ActiveTool switch
         {
             EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Freehand => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Freehand => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Rectangle, EditorTool.Ellipse, EditorTool.Line, EditorTool.Freehand),
             _ => false
         };
 
         public bool ShowArrowStyle => ActiveTool switch
         {
             EditorTool.Arrow => true,
-            EditorTool.Select => _selectedAnnotation is ArrowAnnotation,
+            EditorTool.Select => SelectionSupports(EditorTool.Arrow),
             _ => false
         };
 
         public bool ShowCursorType => ActiveTool switch
         {
             EditorTool.Cursor => true,
-            EditorTool.Select => _selectedAnnotation is CursorAnnotation,
+            EditorTool.Select => SelectionSupports(EditorTool.Cursor),
             _ => false
         };
 
@@ -932,25 +909,21 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         public bool ShowStrength => ActiveTool switch
         {
             EditorTool.Blur or EditorTool.Pixelate or EditorTool.Magnify or EditorTool.Spotlight => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Blur or EditorTool.Pixelate or EditorTool.Magnify or EditorTool.Spotlight => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Blur, EditorTool.Pixelate, EditorTool.Magnify, EditorTool.Spotlight),
             _ => false
         };
 
         public bool ShowSpotlightBlur => ActiveTool switch
         {
             EditorTool.Spotlight => true,
-            EditorTool.Select => SelectedAnnotation is SpotlightAnnotation,
+            EditorTool.Select => SelectionSupports(EditorTool.Spotlight),
             _ => false
         };
 
         public bool ShowEffectEllipse => ActiveTool switch
         {
             EditorTool.Magnify or EditorTool.Spotlight => true,
-            EditorTool.Select => SelectedAnnotation is MagnifyAnnotation or SpotlightAnnotation,
+            EditorTool.Select => SelectionSupports(EditorTool.Magnify, EditorTool.Spotlight),
             _ => false
         };
 
@@ -958,41 +931,28 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         {
             EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow
                 or EditorTool.Freehand or EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Rectangle or EditorTool.Ellipse or EditorTool.Line or EditorTool.Arrow
-                    or EditorTool.Freehand or EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Rectangle, EditorTool.Ellipse, EditorTool.Line, EditorTool.Arrow, EditorTool.Freehand, EditorTool.Text, EditorTool.SpeechBalloon, EditorTool.Step),
             _ => false
         };
 
         public bool ShowSpeechBalloonTail => ActiveTool switch
         {
             EditorTool.SpeechBalloon or EditorTool.Step => true,
-            EditorTool.Select => SelectedAnnotation is SpeechBalloonAnnotation or NumberAnnotation,
+            EditorTool.Select => SelectionSupports(EditorTool.SpeechBalloon, EditorTool.Step),
             _ => false
         };
 
         public bool ShowTextStyle => ActiveTool switch
         {
             EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Text or EditorTool.SpeechBalloon or EditorTool.Step => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.SpeechBalloon, EditorTool.Step),
             _ => false
         };
 
         public bool ShowTextItalic => ActiveTool switch
         {
             EditorTool.Text or EditorTool.SpeechBalloon => true,
-            EditorTool.Select => _selectedAnnotation != null && _selectedAnnotation.ToolType switch
-            {
-                EditorTool.Text or EditorTool.SpeechBalloon => true,
-                _ => false
-            },
+            EditorTool.Select => SelectionSupports(EditorTool.Text, EditorTool.SpeechBalloon),
             _ => false
         };
 

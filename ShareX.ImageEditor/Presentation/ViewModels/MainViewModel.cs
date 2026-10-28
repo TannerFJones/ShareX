@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -712,9 +712,12 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
         [ObservableProperty]
         private double? _targetOutputAspectRatio;
 
+        public Guid NumberSequenceId { get; private set; } = Guid.Empty;
+
         [RelayCommand]
         private void ResetNumberCounter()
         {
+            NumberSequenceId = Guid.NewGuid();
             NumberCounter = StepStartNumber;
         }
 
@@ -725,7 +728,7 @@ namespace ShareX.ImageEditor.Presentation.ViewModels
             {
                 foreach (var ann in annotations)
                 {
-                    if (ann is NumberAnnotation num)
+                    if (ann is NumberAnnotation num && num.SequenceId == NumberSequenceId)
                     {
                         if (num.Number > max) max = num.Number;
                     }

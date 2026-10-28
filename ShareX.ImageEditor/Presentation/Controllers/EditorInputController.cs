@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -166,7 +166,7 @@ public class EditorInputController
             if (hitTarget != null)
             {
                 // Select the shape if not already selected (standard right-click behavior)
-                if (_selectionController.SelectedShape != hitTarget)
+                if (!_selectionController.SelectedShapes.Contains(hitTarget))
                 {
                     _selectionController.SetSelectedShape(hitTarget);
                 }
@@ -446,7 +446,8 @@ public class EditorInputController
                     StepType = vm.SelectedStepType,
                     TailEnabled = vm.SpeechBalloonTail,
                     StartPoint = ToSKPoint(_startPoint),
-                    Number = vm.NumberCounter
+                    Number = vm.NumberCounter,
+                    SequenceId = vm.NumberSequenceId
                 }; ;
                 ApplyShadowOptions(numberAnnotation, vm);
 

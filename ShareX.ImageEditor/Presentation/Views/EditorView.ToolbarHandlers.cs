@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -128,7 +128,11 @@ namespace ShareX.ImageEditor.Presentation.Views
             if (DataContext is MainViewModel vm && color is SolidColorBrush solidBrush)
             {
                 var hexColor = $"#{solidBrush.Color.A:X2}{solidBrush.Color.R:X2}{solidBrush.Color.G:X2}{solidBrush.Color.B:X2}";
-                vm.SetColorCommand.Execute(hexColor);
+                bool synchronizing = _synchronizingSelection;
+                _synchronizingSelection = true;
+                try { vm.SetColorCommand.Execute(hexColor); }
+                finally { _synchronizingSelection = synchronizing; }
+                ApplySelectedColor(hexColor);
             }
         }
 
@@ -137,7 +141,11 @@ namespace ShareX.ImageEditor.Presentation.Views
             if (DataContext is MainViewModel vm && color is SolidColorBrush solidBrush)
             {
                 var hexColor = $"#{solidBrush.Color.A:X2}{solidBrush.Color.R:X2}{solidBrush.Color.G:X2}{solidBrush.Color.B:X2}";
-                vm.FillColor = hexColor;
+                bool synchronizing = _synchronizingSelection;
+                _synchronizingSelection = true;
+                try { vm.FillColor = hexColor; }
+                finally { _synchronizingSelection = synchronizing; }
+                ApplySelectedFillColor(hexColor);
             }
         }
 
@@ -146,7 +154,11 @@ namespace ShareX.ImageEditor.Presentation.Views
             if (DataContext is MainViewModel vm && color is SolidColorBrush solidBrush)
             {
                 var hexColor = $"#{solidBrush.Color.A:X2}{solidBrush.Color.R:X2}{solidBrush.Color.G:X2}{solidBrush.Color.B:X2}";
-                vm.TextColor = hexColor;
+                bool synchronizing = _synchronizingSelection;
+                _synchronizingSelection = true;
+                try { vm.TextColor = hexColor; }
+                finally { _synchronizingSelection = synchronizing; }
+                ApplySelectedTextColor(hexColor);
             }
         }
 
@@ -315,6 +327,9 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedColor(string colorHex)
         {
+            if (_synchronizingSelection) return;
+            if (!_selectionController.SelectedShapes.Any(c => c.Tag is Annotation a && Color.Parse(a.StrokeColor) != Color.Parse(colorHex))) return;
+            if (_selectionController.EditSelection(() => ApplySelectedColor(colorHex))) return;
             var selected = _selectionController.SelectedShape;
             if (selected == null) return;
 
@@ -357,6 +372,9 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedFillColor(string colorHex)
         {
+            if (_synchronizingSelection) return;
+            if (!_selectionController.SelectedShapes.Any(c => c.Tag is Annotation a && Color.Parse(a.FillColor) != Color.Parse(colorHex))) return;
+            if (_selectionController.EditSelection(() => ApplySelectedFillColor(colorHex))) return;
             var selected = _selectionController.SelectedShape;
             if (selected == null) return;
 
@@ -403,6 +421,15 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedTextColor(string colorHex)
         {
+            if (_synchronizingSelection) return;
+            if (!_selectionController.SelectedShapes.Any(c => c.Tag switch
+            {
+                TextAnnotation a => Color.Parse(a.TextColor) != Color.Parse(colorHex),
+                SpeechBalloonAnnotation a => Color.Parse(a.TextColor) != Color.Parse(colorHex),
+                NumberAnnotation a => Color.Parse(a.TextColor) != Color.Parse(colorHex),
+                _ => false
+            })) return;
+            if (_selectionController.EditSelection(() => ApplySelectedTextColor(colorHex))) return;
             var selected = _selectionController.SelectedShape;
             if (selected == null) return;
 
@@ -439,6 +466,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedStrokeWidth(int width)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedStrokeWidth(width))) return;
             var selected = _selectionController.SelectedShape;
             if (selected == null) return;
 
@@ -482,6 +511,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedCornerRadius(int cornerRadius)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedCornerRadius(cornerRadius))) return;
             var selected = _selectionController.SelectedShape;
             if (selected == null) return;
 
@@ -509,6 +540,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedFontSize(float fontSize)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedFontSize(fontSize))) return;
             var selected = _selectionController.SelectedShape;
             if (selected?.Tag is TextAnnotation textAnn)
             {
@@ -541,6 +574,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedTextHorizontalAlignment(TextHorizontalAlignment alignment)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedTextHorizontalAlignment(alignment))) return;
             var selected = _selectionController.SelectedShape;
             if (selected?.Tag is TextAnnotation textAnnotation)
             {
@@ -613,6 +648,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedFontFamily(string fontFamily)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedFontFamily(fontFamily))) return;
             if (string.IsNullOrWhiteSpace(fontFamily))
             {
                 return;
@@ -645,6 +682,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedArrowStyle(ArrowStyle arrowStyle)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedArrowStyle(arrowStyle))) return;
             var selected = _selectionController.SelectedShape;
 
             if (selected?.Tag is ArrowAnnotation arrowAnnotation && selected is global::Avalonia.Controls.Shapes.Path arrowPath)
@@ -657,6 +696,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedBorderStyle(BorderStyle borderStyle)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedBorderStyle(borderStyle))) return;
             var selected = _selectionController.SelectedShape;
 
             switch (selected?.Tag)
@@ -686,6 +727,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedCursorType(CursorType cursorType)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedCursorType(cursorType))) return;
             var selected = _selectionController.SelectedShape;
 
             if (selected?.Tag is CursorAnnotation cursorAnnotation && selected is Image cursorImage)
@@ -705,6 +748,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedEffectStrength(float strength)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedEffectStrength(strength))) return;
             var selected = _selectionController.SelectedShape;
             if (selected?.Tag is BaseEffectAnnotation effectAnn)
             {
@@ -727,6 +772,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedSpotlightBlur(float blurAmount)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedSpotlightBlur(blurAmount))) return;
             if (_selectionController.SelectedShape?.Tag is SpotlightAnnotation spotlightAnnotation)
             {
                 spotlightAnnotation.BlurAmount = blurAmount;
@@ -736,6 +783,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedEffectEllipse(bool isEllipse)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedEffectEllipse(isEllipse))) return;
             var selected = _selectionController.SelectedShape;
 
             if (selected?.Tag is MagnifyAnnotation magnifyAnnotation)
@@ -773,6 +822,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedShadowState(bool isEnabled)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedShadowState(isEnabled))) return;
             var selected = _selectionController.SelectedShape;
             if (selected?.Tag is not Annotation annotation)
             {
@@ -796,6 +847,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedShadowSettings()
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedShadowSettings())) return;
             if (DataContext is not MainViewModel vm)
             {
                 return;
@@ -821,6 +874,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedSpeechBalloonTail(bool isEnabled)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedSpeechBalloonTail(isEnabled))) return;
             if (_selectionController.SelectedShape is SpeechBalloonControl balloonControl &&
                 balloonControl.Annotation is SpeechBalloonAnnotation balloonAnnotation)
             {
@@ -841,6 +896,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedTextBold(bool isBold)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedTextBold(isBold))) return;
             if (_selectionController.SelectedShape?.Tag is TextAnnotation textAnn)
             {
                 textAnn.IsBold = isBold;
@@ -883,6 +940,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void ApplySelectedTextItalic(bool isItalic)
         {
+            if (_synchronizingSelection) return;
+            if (_selectionController.EditSelection(() => ApplySelectedTextItalic(isItalic))) return;
             if (_selectionController.SelectedShape?.Tag is TextAnnotation textAnn)
             {
                 textAnn.IsItalic = isItalic;

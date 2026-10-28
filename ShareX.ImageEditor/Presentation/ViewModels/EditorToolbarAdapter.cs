@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -130,6 +130,8 @@ public sealed class EditorToolbarAdapter : IAnnotationToolbarAdapter
     public IReadOnlyList<ArrowStyle> AvailableArrowStyles => _viewModel.AvailableArrowStyles;
 
     public IReadOnlyList<CursorType> AvailableCursorTypes => _viewModel.AvailableCursorTypes;
+
+    public System.Windows.Input.ICommand ResetNumberCounterCommand => _viewModel.ResetNumberCounterCommand;
 
     public IReadOnlyList<int> AvailableStepStartNumbers => _viewModel.AvailableStepStartNumbers;
 

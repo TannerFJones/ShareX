@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -1278,7 +1278,7 @@ public class EditorCore : IDisposable
         bool renumbered = false;
         if (annotation is NumberAnnotation num)
         {
-            HandleStepRenumbering(num.Number);
+            HandleStepRenumbering(num.Number, num.SequenceId);
             renumbered = true;
         }
 
@@ -1295,11 +1295,11 @@ public class EditorCore : IDisposable
         }
     }
 
-    private void HandleStepRenumbering(int deletedNumber)
+    private void HandleStepRenumbering(int deletedNumber, Guid sequenceId)
     {
         foreach (var annotation in _annotations)
         {
-            if (annotation is NumberAnnotation numberAnnotation && numberAnnotation.Number > deletedNumber)
+            if (annotation is NumberAnnotation numberAnnotation && numberAnnotation.SequenceId == sequenceId && numberAnnotation.Number > deletedNumber)
             {
                 numberAnnotation.Number--;
             }
@@ -1310,6 +1310,37 @@ public class EditorCore : IDisposable
     /// Add an annotation from an external controller (e.g. InputController)
     /// This captures the history state BEFORE adding the annotation.
     /// </summary>
+    public void BeginAnnotationEdit() => _history.CreateAnnotationsMemento(force: true);
+
+    public void CompleteAnnotationEdit()
+    {
+        HistoryChanged?.Invoke();
+        InvalidateRequested?.Invoke();
+    }
+
+    public void AddAnnotations(IEnumerable<Annotation> annotations)
+    {
+        var additions = annotations.ToArray();
+        if (additions.Length == 0) return;
+        BeginAnnotationEdit();
+        _annotations.AddRange(additions);
+        CompleteAnnotationEdit();
+    }
+
+    public void RemoveAnnotations(IEnumerable<Annotation> annotations)
+    {
+        var removed = annotations.Where(_annotations.Contains).Distinct().ToArray();
+        if (removed.Length == 0) return;
+        BeginAnnotationEdit();
+        foreach (var annotation in removed) _annotations.Remove(annotation);
+        var removedNumbers = removed.OfType<NumberAnnotation>().ToArray();
+        foreach (var number in _annotations.OfType<NumberAnnotation>())
+            number.Number -= removedNumbers.Count(n => n.SequenceId == number.SequenceId && n.Number < number.Number);
+        if (_selectedAnnotation != null && removed.Contains(_selectedAnnotation)) _selectedAnnotation = null;
+        CompleteAnnotationEdit();
+        AnnotationsRestored?.Invoke();
+    }
+
     public void AddAnnotation(Annotation annotation)
     {
         // Capture state BEFORE adding the new annotation (Undo will revert to this state)

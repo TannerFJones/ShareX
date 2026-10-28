@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -41,6 +41,9 @@ public partial class NumberAnnotation : Annotation
     /// Number to display (typically auto-incremented)
     /// </summary>
     public int Number { get; set; } = 1;
+
+    /// <summary>Independent counting sequence. Empty identifies markers from older documents.</summary>
+    public Guid SequenceId { get; set; } = Guid.Empty;
 
     /// <summary>
     /// Display style for the step label.

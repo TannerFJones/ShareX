@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -39,6 +39,8 @@ namespace ShareX.ImageEditor.Presentation.Views
     {
         private async void OnCutRequested(object? sender, EventArgs e)
         {
+            if (await CopyMultipleSelectionAsync(cut: true)) return;
+            ClearMultipleClipboard();
             if (_selectionController.SelectedShape?.Tag is Annotation annotation)
             {
                 // Copy to internal clipboard
@@ -73,6 +75,8 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private async void OnCopyRequested(object? sender, EventArgs e)
         {
+            if (await CopyMultipleSelectionAsync(cut: false)) return;
+            ClearMultipleClipboard();
             if (_selectionController.SelectedShape?.Tag is Annotation annotation)
             {
                 // Deep clone to internal clipboard
@@ -133,8 +137,14 @@ namespace ShareX.ImageEditor.Presentation.Views
                     }
                 }
 
+                if (_clipboardAnnotations is { Count: > 0 })
+                {
+                    AddSelectionCopies(_clipboardAnnotations);
+                    return;
+                }
+
                 // Priority 2: Internal shape clipboard
-                if (_clipboardAnnotation != null)
+                if (_clipboardAnnotation != null || _clipboardAnnotations is { Count: > 0 })
                 {
                     PasteInternalShape();
                     return;
@@ -276,7 +286,7 @@ namespace ShareX.ImageEditor.Presentation.Views
             bool canPaste = false;
 
             // 1. Check internal clipboard
-            if (_clipboardAnnotation != null)
+            if (_clipboardAnnotation != null || _clipboardAnnotations is { Count: > 0 })
             {
                 canPaste = true;
             }
@@ -324,6 +334,11 @@ namespace ShareX.ImageEditor.Presentation.Views
         /// </summary>
         private void DuplicateSelectedAnnotation()
         {
+            if (_selectionController.SelectedShapes.Count > 1)
+            {
+                AddSelectionCopies(_selectionController.SelectedShapes.Select(c => c.Tag).OfType<Annotation>());
+                return;
+            }
             var selectedControl = _selectionController.SelectedShape;
             if (selectedControl == null) return;
 

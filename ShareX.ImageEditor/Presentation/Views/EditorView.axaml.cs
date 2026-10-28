@@ -1,4 +1,4 @@
-﻿#region License Information (GPL v3)
+#region License Information (GPL v3)
 
 /*
     ShareX - A program that allows you to take screenshots and share any file type
@@ -315,129 +315,137 @@ namespace ShareX.ImageEditor.Presentation.Views
             }
         }
 
+        private bool _synchronizingSelection;
+
         private void OnSelectionChanged(bool hasSelection)
         {
-            if (DataContext is MainViewModel vm)
+            _synchronizingSelection = true;
+            try
             {
-                vm.HasSelectedAnnotation = hasSelection;
-                var annotation = _selectionController.SelectedShape?.Tag as Annotation;
-                vm.SelectedAnnotation = annotation;
-
-                // Sync selection to EditorCore so z-order operations work
-                if (annotation != null)
+                if (DataContext is MainViewModel vm)
                 {
-                    _editorCore.Select(annotation);
-                }
-                else
-                {
-                    _editorCore.Deselect();
-                }
+                    vm.SetSelectedAnnotations(_selectionController.SelectedShapes.Select(c => c.Tag).OfType<Annotation>());
+                    vm.HasSelectedAnnotation = hasSelection;
+                    var annotation = _selectionController.SelectedShape?.Tag as Annotation;
+                    vm.SelectedAnnotation = annotation;
 
-                // Sync VM properties with selected annotation to update UI
-                if (vm.SelectedAnnotation != null)
-                {
-                    // Prevent feedback loop: UI update -> VM Property Changed -> Apply to Annotation (redundant)
-                    // But Apply... methods limit damage.
-
-                    // Don't sync stroke properties from ImageAnnotation, effect annotations,
-                    // Spotlight, or SmartEraser. They use nonstandard option semantics and
-                    // would clobber the shared defaults for other tools.
-                    if (vm.SelectedAnnotation is not ImageAnnotation
-                        && vm.SelectedAnnotation is not BaseEffectAnnotation
-                        && vm.SelectedAnnotation is not SpotlightAnnotation
-                        && vm.SelectedAnnotation is not SmartEraserAnnotation)
+                    // Sync selection to EditorCore so z-order operations work
+                    if (annotation != null)
                     {
-                        vm.SelectedColor = vm.SelectedAnnotation.StrokeColor;
-                        vm.StrokeWidth = (int)vm.SelectedAnnotation.StrokeWidth;
-                        vm.ShadowEnabled = vm.SelectedAnnotation.ShadowEnabled;
-                        vm.ShadowColorValue = Avalonia.Media.Color.Parse(vm.SelectedAnnotation.ShadowColor);
-                        vm.ShadowBlurRadius = vm.SelectedAnnotation.ShadowBlurRadius;
-                        vm.ShadowOpacity = vm.SelectedAnnotation.ShadowOpacity;
-                        vm.ShadowOffsetX = vm.SelectedAnnotation.ShadowOffsetX;
-                        vm.ShadowOffsetY = vm.SelectedAnnotation.ShadowOffsetY;
+                        _editorCore.Select(annotation);
+                    }
+                    else
+                    {
+                        _editorCore.Deselect();
                     }
 
-                    if (vm.SelectedAnnotation is NumberAnnotation num)
+                    // Sync VM properties with selected annotation to update UI
+                    if (vm.SelectedAnnotation != null)
                     {
-                        vm.FontSize = num.FontSize;
-                        vm.TextBold = num.IsBold;
-                        vm.FillColor = num.FillColor;
-                        vm.SpeechBalloonTail = num.TailEnabled;
-                        if (!string.IsNullOrEmpty(num.TextColor))
-                            vm.TextColorValue = Avalonia.Media.Color.Parse(num.TextColor);
-                    }
-                    else if (vm.SelectedAnnotation is TextAnnotation text)
-                    {
-                        vm.FontSize = text.FontSize;
-                        vm.SelectedFontFamily = text.FontFamily;
-                        vm.SelectedTextHorizontalAlignment = text.HorizontalAlignment;
-                        vm.TextBold = text.IsBold;
-                        vm.TextItalic = text.IsItalic;
-                        if (!string.IsNullOrEmpty(text.TextColor))
-                            vm.TextColorValue = Avalonia.Media.Color.Parse(text.TextColor);
-                    }
-                    else if (vm.SelectedAnnotation is SpeechBalloonAnnotation balloon)
-                    {
-                        vm.FontSize = balloon.FontSize;
-                        vm.SelectedFontFamily = balloon.FontFamily;
-                        vm.SelectedTextHorizontalAlignment = balloon.HorizontalAlignment;
-                        vm.TextBold = balloon.IsBold;
-                        vm.TextItalic = balloon.IsItalic;
-                        vm.FillColor = balloon.FillColor;
-                        vm.CornerRadius = balloon.CornerRadius;
-                        vm.SpeechBalloonTail = balloon.TailEnabled;
-                        if (!string.IsNullOrEmpty(balloon.TextColor))
-                            vm.TextColorValue = Avalonia.Media.Color.Parse(balloon.TextColor);
-                    }
-                    else if (vm.SelectedAnnotation is RectangleAnnotation rect && vm.SelectedAnnotation is not SmartEraserAnnotation)
-                    {
-                        vm.SelectedBorderStyle = rect.BorderStyle;
-                        vm.FillColor = rect.FillColor;
-                        vm.CornerRadius = rect.CornerRadius;
-                    }
-                    else if (vm.SelectedAnnotation is LineAnnotation line)
-                    {
-                        vm.SelectedBorderStyle = line.BorderStyle;
-                    }
-                    else if (vm.SelectedAnnotation is FreehandAnnotation freehand)
-                    {
-                        vm.SelectedBorderStyle = freehand.BorderStyle;
-                    }
-                    else if (vm.SelectedAnnotation is CursorAnnotation cursor)
-                    {
-                        vm.SelectedCursorType = cursor.CursorType;
-                    }
-                    else if (vm.SelectedAnnotation is ArrowAnnotation arrow)
-                    {
-                        vm.SelectedArrowStyle = arrow.Style;
-                    }
-                    else if (vm.SelectedAnnotation is EllipseAnnotation ellipse)
-                    {
-                        vm.SelectedBorderStyle = ellipse.BorderStyle;
-                        vm.FillColor = ellipse.FillColor;
-                    }
-                    else if (vm.SelectedAnnotation is SpotlightAnnotation spotlight)
-                    {
-                        vm.EffectStrength = (int)Math.Round(
-                            spotlight.DarkenOpacity / 255f * MainViewModel.GetMaxEffectStrength(EditorTool.Spotlight),
-                            MidpointRounding.AwayFromZero);
-                        vm.SpotlightBlur = spotlight.BlurAmount;
-                        vm.EffectEllipse = spotlight.IsEllipse;
-                    }
-                    else if (vm.SelectedAnnotation is BaseEffectAnnotation effect)
-                    {
-                        vm.EffectStrength = (int)effect.Amount;
-                        if (effect is MagnifyAnnotation magnify)
+                        // Prevent feedback loop: UI update -> VM Property Changed -> Apply to Annotation (redundant)
+                        // But Apply... methods limit damage.
+
+                        // Don't sync stroke properties from ImageAnnotation, effect annotations,
+                        // Spotlight, or SmartEraser. They use nonstandard option semantics and
+                        // would clobber the shared defaults for other tools.
+                        if (vm.SelectedAnnotation is not ImageAnnotation
+                            && vm.SelectedAnnotation is not BaseEffectAnnotation
+                            && vm.SelectedAnnotation is not SpotlightAnnotation
+                            && vm.SelectedAnnotation is not SmartEraserAnnotation)
                         {
-                            vm.EffectEllipse = magnify.IsEllipse;
+                            vm.SelectedColor = vm.SelectedAnnotation.StrokeColor;
+                            vm.StrokeWidth = (int)vm.SelectedAnnotation.StrokeWidth;
+                            vm.ShadowEnabled = vm.SelectedAnnotation.ShadowEnabled;
+                            vm.ShadowColorValue = Avalonia.Media.Color.Parse(vm.SelectedAnnotation.ShadowColor);
+                            vm.ShadowBlurRadius = vm.SelectedAnnotation.ShadowBlurRadius;
+                            vm.ShadowOpacity = vm.SelectedAnnotation.ShadowOpacity;
+                            vm.ShadowOffsetX = vm.SelectedAnnotation.ShadowOffsetX;
+                            vm.ShadowOffsetY = vm.SelectedAnnotation.ShadowOffsetY;
                         }
-                        if (effect is HighlightAnnotation highlight)
+
+                        if (vm.SelectedAnnotation is NumberAnnotation num)
                         {
-                            vm.FillColor = highlight.FillColor;
+                            vm.FontSize = num.FontSize;
+                            vm.TextBold = num.IsBold;
+                            vm.FillColor = num.FillColor;
+                            vm.SpeechBalloonTail = num.TailEnabled;
+                            if (!string.IsNullOrEmpty(num.TextColor))
+                                vm.TextColorValue = Avalonia.Media.Color.Parse(num.TextColor);
+                        }
+                        else if (vm.SelectedAnnotation is TextAnnotation text)
+                        {
+                            vm.FontSize = text.FontSize;
+                            vm.SelectedFontFamily = text.FontFamily;
+                            vm.SelectedTextHorizontalAlignment = text.HorizontalAlignment;
+                            vm.TextBold = text.IsBold;
+                            vm.TextItalic = text.IsItalic;
+                            if (!string.IsNullOrEmpty(text.TextColor))
+                                vm.TextColorValue = Avalonia.Media.Color.Parse(text.TextColor);
+                        }
+                        else if (vm.SelectedAnnotation is SpeechBalloonAnnotation balloon)
+                        {
+                            vm.FontSize = balloon.FontSize;
+                            vm.SelectedFontFamily = balloon.FontFamily;
+                            vm.SelectedTextHorizontalAlignment = balloon.HorizontalAlignment;
+                            vm.TextBold = balloon.IsBold;
+                            vm.TextItalic = balloon.IsItalic;
+                            vm.FillColor = balloon.FillColor;
+                            vm.CornerRadius = balloon.CornerRadius;
+                            vm.SpeechBalloonTail = balloon.TailEnabled;
+                            if (!string.IsNullOrEmpty(balloon.TextColor))
+                                vm.TextColorValue = Avalonia.Media.Color.Parse(balloon.TextColor);
+                        }
+                        else if (vm.SelectedAnnotation is RectangleAnnotation rect && vm.SelectedAnnotation is not SmartEraserAnnotation)
+                        {
+                            vm.SelectedBorderStyle = rect.BorderStyle;
+                            vm.FillColor = rect.FillColor;
+                            vm.CornerRadius = rect.CornerRadius;
+                        }
+                        else if (vm.SelectedAnnotation is LineAnnotation line)
+                        {
+                            vm.SelectedBorderStyle = line.BorderStyle;
+                        }
+                        else if (vm.SelectedAnnotation is FreehandAnnotation freehand)
+                        {
+                            vm.SelectedBorderStyle = freehand.BorderStyle;
+                        }
+                        else if (vm.SelectedAnnotation is CursorAnnotation cursor)
+                        {
+                            vm.SelectedCursorType = cursor.CursorType;
+                        }
+                        else if (vm.SelectedAnnotation is ArrowAnnotation arrow)
+                        {
+                            vm.SelectedArrowStyle = arrow.Style;
+                        }
+                        else if (vm.SelectedAnnotation is EllipseAnnotation ellipse)
+                        {
+                            vm.SelectedBorderStyle = ellipse.BorderStyle;
+                            vm.FillColor = ellipse.FillColor;
+                        }
+                        else if (vm.SelectedAnnotation is SpotlightAnnotation spotlight)
+                        {
+                            vm.EffectStrength = (int)Math.Round(
+                                spotlight.DarkenOpacity / 255f * MainViewModel.GetMaxEffectStrength(EditorTool.Spotlight),
+                                MidpointRounding.AwayFromZero);
+                            vm.SpotlightBlur = spotlight.BlurAmount;
+                            vm.EffectEllipse = spotlight.IsEllipse;
+                        }
+                        else if (vm.SelectedAnnotation is BaseEffectAnnotation effect)
+                        {
+                            vm.EffectStrength = (int)effect.Amount;
+                            if (effect is MagnifyAnnotation magnify)
+                            {
+                                vm.EffectEllipse = magnify.IsEllipse;
+                            }
+                            if (effect is HighlightAnnotation highlight)
+                            {
+                                vm.FillColor = highlight.FillColor;
+                            }
                         }
                     }
                 }
             }
+            finally { _synchronizingSelection = false; }
         }
 
         protected override void OnLoaded(RoutedEventArgs e)
@@ -1022,7 +1030,7 @@ namespace ShareX.ImageEditor.Presentation.Views
                 }
                 else if (e.PropertyName == nameof(MainViewModel.StepStartNumber))
                 {
-                    vm.RecalculateNumberCounter(_editorCore.Annotations);
+                    // Changing the starting number begins an independent sequence.
                 }
                 else if (e.PropertyName == nameof(MainViewModel.SelectedTextHorizontalAlignment))
                 {
@@ -1583,6 +1591,7 @@ namespace ShareX.ImageEditor.Presentation.Views
 
                     switch (e.Key)
                     {
+                        case Key.A: vm.ActiveTool = EditorTool.Select; _selectionController.SelectAll(); e.Handled = true; break;
                         case Key.Z: vm.UndoCommand.Execute(null); e.Handled = true; break;
                         case Key.Y: vm.RedoCommand.Execute(null); e.Handled = true; break;
                         case Key.H: vm.ToggleToolbarsCommand.Execute(null); e.Handled = true; break;
@@ -1793,6 +1802,13 @@ namespace ShareX.ImageEditor.Presentation.Views
 
         private void PerformDelete()
         {
+            if (_selectionController.SelectedShapes.Count > 1)
+            {
+                _editorCore.RemoveAnnotations(_selectionController.SelectedShapes.Select(c => c.Tag).OfType<Annotation>());
+                _selectionController.ClearSelection();
+                UpdateHasAnnotationsState();
+                return;
+            }
             var selected = _selectionController.SelectedShape;
             if (selected != null)
             {
